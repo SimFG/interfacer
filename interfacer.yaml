@@ -1,0 +1,7 @@
+project_dir: "/Users/derek/fubang/interfacer/example/all"
+project_module: "github.com/SimFG/interfacer/example/all"
+interface_full_name: "github.com/SimFG/interfacer/example/all/i.Component"
+new_method: "Hello(f int64) (int, error)"
+return_default_values: "0,nil"
+write_paths:
+  - "github.com/SimFG/interfacer/example/proxy/all/s.Node,/Users/derek/xxx/interfacer/example/all/s/st.go"
