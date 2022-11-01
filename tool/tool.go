@@ -115,6 +115,20 @@ func TypeString(i interface{}) string {
 	return reflect.TypeOf(i).String()
 }
 
+// HandleError panic directly
+func HandleError(e interface{}) {
+	if e != nil {
+		panic(e)
+	}
+}
+
+func HandleErrorWithMsg(e interface{}, msg ...string) {
+	if e != nil {
+		fmt.Println(msg)
+		panic(e)
+	}
+}
+
 func PrintDetail(detail string, i interface{}) {
 	log.Println(detail+" - PrintDetail", fmt.Sprintf("%#v", i))
 }

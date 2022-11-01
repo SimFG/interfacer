@@ -18,6 +18,7 @@ In general, adding a method to an interface is cumbersome and time-consuming.
 ```shell
 go install github.com/SimFG/interfacer
 ```
+**Tips**: If you use the windows, you can download the source code and build the tool.
 
 ### Parameter description
 There are two ways to set parameters, which are:
@@ -58,6 +59,12 @@ go run interfacer.go
 
 ## TODO
 - Dealing with generated code out of order of comments
+  - for interface
+  - for struct method
 - Handle some special struct or interface
 - Check the input params
+- Exclude dirs or files
 - More readable codes
+- Debug mode, print the detail info
+- More useful tool of reading and writing `go` file
+- customer the insert position

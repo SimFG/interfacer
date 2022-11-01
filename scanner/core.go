@@ -62,15 +62,14 @@ func New(p string, r string) *Scanner {
 
 func (s *Scanner) Start(dir string, excludeDir []string) error {
 	excludeDirMap := tool.ToMap(excludeDir)
-	if err := tool.FileWalk(dir, true, func(absPath string, fileInfo os.FileInfo) bool {
+	err := tool.FileWalk(dir, true, func(absPath string, fileInfo os.FileInfo) bool {
 		if _, ok := excludeDirMap[fileInfo.Name()]; ok {
 			return false
 		}
 		s.parseDir(absPath)
 		return true
-	}); err != nil {
-		return err
-	}
+	})
+	tool.HandleError(err)
 
 	lo.ForEach[PostParser](s.postParserFuncs, func(item PostParser, index int) {
 		item.Post(s.structs, s.interfaces)
@@ -100,15 +99,11 @@ func (s *Scanner) Start(dir string, excludeDir []string) error {
 func (s *Scanner) parseDir(dir string) error {
 	fs := token.NewFileSet()
 	result, err := parser.ParseDir(fs, dir, nil, 0)
-	if err != nil {
-		logger.Error("fail to parse dir", zap.Error(err))
-		return err
-	}
+	tool.HandleErrorWithMsg(err, "fail to parse dir:", dir)
+
 	for _, r := range result {
 		lastSep := strings.LastIndex(dir, tool.FileSep)
 		lastWord := dir[lastSep+1:]
-		//curPackage := strings.Replace(dir[:lastSep], s.rootPath, s.packageStr, 1)
-		//curPackage += tool.FileSep + r.Name
 		curPackage := strings.Replace(dir, s.rootPath, s.packageStr, 1)
 		if lastWord != r.Name {
 			logger.Warn("package name is uncommon", zap.String("dir", dir), zap.String("package", r.Name))

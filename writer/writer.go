@@ -17,14 +17,17 @@
 package writer
 
 import (
+	"bufio"
 	"bytes"
-	"fmt"
+	"github.com/SimFG/interfacer/tool"
 	"github.com/samber/lo"
 	"go/ast"
 	"go/format"
 	"go/parser"
 	"go/token"
+	"io"
 	"io/ioutil"
+	"os"
 	"strings"
 )
 
@@ -32,41 +35,45 @@ func WriteFile(fileName string, writers []Writer) {
 	var buf bytes.Buffer
 	fset := token.NewFileSet()
 	fileNode, err := parser.ParseFile(fset, fileName, nil, parser.ParseComments)
+	tool.HandleError(err)
 	for _, writer := range writers {
-		writer.Write(fileNode)
+		writer.Write(fset, fileNode)
 	}
 
 	err = format.Node(&buf, fset, fileNode)
+	tool.HandleErrorWithMsg(err, "format node filename:", fileName)
 	// TODO handle like:
 	//type Component struct {
 	//}
 	//
 	//func (Component) Dummy(){
 	//}
-	if err != nil {
-		fmt.Println("node filename:", fileName, "err:", err)
-		return
-	}
+
 	err = ioutil.WriteFile(fileName, buf.Bytes(), 0)
-	if err != nil {
-		fmt.Println("node err:", err)
-		return
+	tool.HandleErrorWithMsg(err, "write node filename:", fileName)
+}
+
+func WriteFileForLine(fileName string, writers []Writer) {
+	fset := token.NewFileSet()
+	fileNode, err := parser.ParseFile(fset, fileName, nil, parser.ParseComments)
+	tool.HandleError(err)
+	for _, writer := range writers {
+		writer.Write(fset, fileNode)
 	}
-	//fmt.Println(string(buf.Bytes()))
 }
 
 type Writer interface {
-	Write(fileNode *ast.File)
+	Write(fset *token.FileSet, fileNode *ast.File)
 }
 
-type WriteFunc func(fileNode *ast.File)
+type WriteFunc func(fset *token.FileSet, fileNode *ast.File)
 
-func (w WriteFunc) Write(fileNode *ast.File) {
-	w(fileNode)
+func (w WriteFunc) Write(fset *token.FileSet, fileNode *ast.File) {
+	w(fset, fileNode)
 }
 
 func GetImportWriter(alia string, importValue string) Writer {
-	return WriteFunc(func(fileNode *ast.File) {
+	return WriteFunc(func(fset *token.FileSet, fileNode *ast.File) {
 		var ident *ast.Ident
 		var importSpec *ast.GenDecl
 		if alia != "" {
@@ -125,7 +132,7 @@ func GetIdent(i string) ast.Expr {
 }
 
 func GetFuncWriter(receiverName string, receiverType string, funcName string, paramNames []string, paramTypes []string, returnTypes []string, returnDefaultValues []string) Writer {
-	return WriteFunc(func(fileNode *ast.File) {
+	return WriteFunc(func(fset *token.FileSet, fileNode *ast.File) {
 		paramFieldList := &ast.FieldList{}
 		if len(paramNames) > 0 {
 			lo.ForEach[string](paramNames, func(item string, index int) {
@@ -177,7 +184,7 @@ func GetFuncWriter(receiverName string, receiverType string, funcName string, pa
 }
 
 func GetInterfaceWrite(interfaceName string, funcName string, paramNames []string, paramTypes []string, returnTypes []string) Writer {
-	return WriteFunc(func(fileNode *ast.File) {
+	return WriteFunc(func(fset *token.FileSet, fileNode *ast.File) {
 		var (
 			ok            bool
 			typeSpec      *ast.TypeSpec
@@ -224,4 +231,65 @@ func GetInterfaceWrite(interfaceName string, funcName string, paramNames []strin
 			return true
 		})
 	})
+}
+
+// GetInterfaceWrite2 dismiss the influence of the comment
+func GetInterfaceWrite2(fileName string, interfaceName string, method string) Writer {
+	return WriteFunc(func(fset *token.FileSet, fileNode *ast.File) {
+		var (
+			ok       bool
+			typeSpec *ast.TypeSpec
+		)
+		ast.Inspect(fileNode, func(x ast.Node) bool {
+			if typeSpec, ok = x.(*ast.TypeSpec); !ok {
+				return true
+			}
+			if _, ok = typeSpec.Type.(*ast.InterfaceType); !ok {
+				return true
+			}
+			typeName := typeSpec.Name.Name
+			if typeName != interfaceName {
+				return true
+			}
+			pos := fset.Position(x.End())
+			FileInsertContent(fileName, pos.Line-1, method)
+			return false
+		})
+	})
+
+}
+
+func FileInsertContent(fileName string, line int, content string) {
+	file, err := os.OpenFile(fileName, os.O_RDWR, 0)
+	tool.HandleErrorWithMsg(err, "File open failed!")
+
+	reader := bufio.NewReader(file)
+
+	tempFile, err := os.OpenFile(fileName+".tmp", os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0766)
+	tool.HandleErrorWithMsg(err, "Temp create failed!")
+
+	writer := bufio.NewWriter(tempFile)
+	_ = writer.Flush()
+	for i := 0; i < line; i++ {
+		l, err := reader.ReadString('\n')
+		tool.HandleErrorWithMsg(err, "File raed failed!")
+
+		_, _ = writer.WriteString(l)
+		_ = writer.Flush()
+	}
+	_, _ = tempFile.WriteString(content + "\n")
+	for {
+		l, err := reader.ReadString('\n')
+		if err == io.EOF {
+			break
+		}
+		tool.HandleErrorWithMsg(err, "File raed failed!")
+		_, _ = writer.WriteString(l)
+	}
+	_ = writer.Flush()
+
+	file.Close()
+	tempFile.Close()
+	err = os.Rename(fileName+".tmp", fileName)
+	tool.HandleErrorWithMsg(err, "Rename file raed failed!")
 }

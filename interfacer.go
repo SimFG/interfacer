@@ -17,6 +17,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"github.com/SimFG/interfacer/scanner"
 	"github.com/SimFG/interfacer/tool"
@@ -71,40 +72,31 @@ func init() {
 
 func readYaml() bool {
 	fileName := "interfacer.yaml"
-	if _, err := os.Stat(fileName); err != nil {
-		fmt.Println("fail to stat interfacer.yaml, err:", err)
-		return false
-	}
+	_, err := os.Stat(fileName)
+	tool.HandleErrorWithMsg(err, "fail to stat interfacer.yaml")
+
 	f, err := os.Open("interfacer.yaml")
-	if err != nil {
-		fmt.Println("fail to open interfacer.yaml, err:", err)
-		return false
-	}
-	if err = yaml.NewDecoder(f).Decode(config); err != nil {
-		fmt.Println("fail to decode interfacer.yaml, err:", err)
-		return false
-	}
+	tool.HandleErrorWithMsg(err, "fail to open interfacer.yaml")
+
+	err = yaml.NewDecoder(f).Decode(config)
+	tool.HandleErrorWithMsg(err, "fail to decode interfacer.yaml")
+
 	return true
 }
 
 func implement(cmd *cobra.Command, args []string) {
 	if projectDir == "" || projectModule == "" || interfaceFullName == "" || newMethod == "" {
-		fmt.Fprintln(os.Stderr, "The params should be filled")
-		return
+		tool.HandleErrorWithMsg(errors.New("invalid param"), "The params should be filled")
 	}
 
 	s := scanner.New(projectModule, projectDir)
 	tool.Timer("Interfacer", func() {
 		e := s.Start(projectDir, []string{".idea", ".git", "vendor", ".github"})
-		if e != nil {
-			fmt.Fprintln(os.Stderr, "scan error:", e)
-			return
-		}
+		tool.HandleErrorWithMsg(e, "scan error")
+
 		interfaceInfo := s.GetInterface(interfaceFullName)
-		if interfaceInfo == nil {
-			fmt.Fprintln(os.Stderr, "Not found the interface,", interfaceFullName)
-			return
-		}
+		tool.HandleErrorWithMsg(errors.New("not found the interface"), "interface name:", interfaceFullName)
+
 		interfaceName := interfaceFullName[strings.LastIndex(interfaceFullName, ".")+1:]
 		i := strings.Index(newMethod, "(")
 		j := strings.Index(newMethod, ")")
@@ -146,7 +138,9 @@ func implement(cmd *cobra.Command, args []string) {
 			})
 		}
 		// TODO handle the comment
-		writer.WriteFile(interfaceInfo.FilePaths()[0], []writer.Writer{writer.GetInterfaceWrite(interfaceName, funcName, paramNames, paramTypes, returnTypes)})
+		//writer.WriteFile(interfaceInfo.FilePaths()[0], []writer.Writer{writer.GetInterfaceWrite(interfaceName, funcName, paramNames, paramTypes, returnTypes)})
+		interfaceFileName := interfaceInfo.FilePaths()[0]
+		writer.WriteFileForLine(interfaceFileName, []writer.Writer{writer.GetInterfaceWrite2(interfaceFileName, interfaceName, "\t"+newMethod)})
 		lo.ForEach[*scanner.StructInfo](interfaceInfo.GetImplements(), func(item *scanner.StructInfo, index int) {
 			writePath := item.FilePaths()[0]
 			if p, ok := writePaths[item.Name()]; ok {
