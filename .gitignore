@@ -1,4 +1,6 @@
 interface.txt
+**/interfacer.log
+**/record.log
 *_test.go
 Makefile
 .idea

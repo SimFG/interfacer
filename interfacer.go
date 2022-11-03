@@ -24,6 +24,7 @@ import (
 	"github.com/SimFG/interfacer/writer"
 	"github.com/samber/lo"
 	"github.com/spf13/cobra"
+	"go.uber.org/zap"
 	"gopkg.in/yaml.v3"
 	"os"
 	"strings"
@@ -31,11 +32,14 @@ import (
 
 type Config struct {
 	WritePaths          []string `yaml:"write_paths,flow"`
+	ExcludeDirs         []string `yaml:"exclude_dirs,flow"`
 	ProjectDir          string   `yaml:"project_dir"`
 	ProjectModule       string   `yaml:"project_module"`
 	InterfaceFullName   string   `yaml:"interface_full_name"`
 	NewMethod           string   `yaml:"new_method"`
 	ReturnDefaultValues string   `yaml:"return_default_values"`
+	EnableRecord        bool     `yaml:"enable_record"`
+	EnableDebug         bool     `yaml:"enable_debug"`
 }
 
 var (
@@ -62,12 +66,19 @@ func init() {
 		pathInfo := strings.Split(item, ",")
 		writePaths[pathInfo[0]] = pathInfo[1]
 	})
+	config.ExcludeDirs = append(config.ExcludeDirs, []string{".idea", ".git", "vendor", ".github"}...)
+	tool.EnableRecord(config.EnableRecord)
+	tool.EnableDebug(config.EnableDebug)
 
 	interfacer.Flags().StringVar(&projectDir, "project-dir", config.ProjectDir, "full project dir")
 	interfacer.Flags().StringVar(&projectModule, "project-module", config.ProjectModule, "project module")
 	interfacer.Flags().StringVar(&interfaceFullName, "interface", config.InterfaceFullName, "interface full name, like: go.uber.org/zap/zapcore.Core")
 	interfacer.Flags().StringVar(&newMethod, "method", config.NewMethod, "the method declaration")
 	interfacer.Flags().StringVar(&returnDefaultValues, "returns", config.ReturnDefaultValues, "the return value of the method, like: nil,nil")
+
+	tool.Info("cmd params", zap.String("project_dir", projectDir), zap.String("project_module", projectModule),
+		zap.String("interface_full_name", interfaceFullName), zap.String("method", newMethod),
+		zap.String("return_default_value", returnDefaultValues), zap.Any("config", config))
 }
 
 func readYaml() bool {
@@ -91,17 +102,20 @@ func implement(cmd *cobra.Command, args []string) {
 
 	s := scanner.New(projectModule, projectDir)
 	tool.Timer("Interfacer", func() {
-		e := s.Start(projectDir, []string{".idea", ".git", "vendor", ".github"})
-		tool.HandleErrorWithMsg(e, "scan error")
+		s.Start(projectDir, config.ExcludeDirs)
+		s.Print()
 
 		interfaceInfo := s.GetInterface(interfaceFullName)
-		tool.HandleErrorWithMsg(errors.New("not found the interface"), "interface name:", interfaceFullName)
+		if interfaceInfo == nil {
+			tool.HandleErrorWithMsg(errors.New("not found the interface"), "interface name:", interfaceFullName)
+		}
 
 		interfaceName := interfaceFullName[strings.LastIndex(interfaceFullName, ".")+1:]
 		i := strings.Index(newMethod, "(")
 		j := strings.Index(newMethod, ")")
 		x := strings.LastIndex(newMethod, "(")
 		y := strings.LastIndex(newMethod, ")")
+		tool.Info("new method split", zap.Ints("splits", []int{i, j, x, y}))
 
 		var (
 			funcName       string
@@ -137,8 +151,10 @@ func implement(cmd *cobra.Command, args []string) {
 				returnTypes = append(returnTypes, item)
 			})
 		}
-		// TODO handle the comment
-		//writer.WriteFile(interfaceInfo.FilePaths()[0], []writer.Writer{writer.GetInterfaceWrite(interfaceName, funcName, paramNames, paramTypes, returnTypes)})
+		tool.Info("method signature", zap.String("func_name", funcName),
+			zap.Strings("param_names", paramNames), zap.Strings("param_types", paramTypes),
+			zap.Strings("return_types", returnTypes), zap.Strings("return_defaults", returnDefaults))
+
 		interfaceFileName := interfaceInfo.FilePaths()[0]
 		writer.WriteFileForLine(interfaceFileName, []writer.Writer{writer.GetInterfaceWrite2(interfaceFileName, interfaceName, "\t"+newMethod)})
 		lo.ForEach[*scanner.StructInfo](interfaceInfo.GetImplements(), func(item *scanner.StructInfo, index int) {

@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"github.com/SimFG/interfacer/tool"
 	"github.com/samber/lo"
-	"log"
+	"go.uber.org/zap"
 	"sort"
 	"strings"
 )
@@ -43,8 +43,7 @@ func (b *BaseInfo) Name() string {
 type StructInfo struct {
 	*BaseInfo
 	// map is easy to check whether it has implemented the interface
-	methods map[string]*MethodInfo
-	// TODO
+	methods        map[string]*MethodInfo
 	innerStruct    []*StructInfo
 	innerInterface []*InterfaceInfo
 }
@@ -89,7 +88,6 @@ func (s *StructInfo) innerToken() []string {
 	return tokens
 }
 
-// TOOD stack overflow
 func (s *StructInfo) HasImplementInterface(i *InterfaceInfo) bool {
 	var x, y int
 
@@ -105,19 +103,6 @@ func (s *StructInfo) HasImplementInterface(i *InterfaceInfo) bool {
 	}
 
 	return y == len(i.tokens)
-
-	//for _, m := range i.methods {
-	//	if !s.CheckMethod(m) {
-	//		return false
-	//	}
-	//}
-	//
-	//for _, innerInterface := range i.innerInterface {
-	//	if !s.HasImplementInterface(innerInterface) {
-	//		return false
-	//	}
-	//}
-	//return true
 }
 
 func (s *StructInfo) MethodReceiver() (receiverName string, receiverType string) {
@@ -130,28 +115,28 @@ func (s *StructInfo) MethodReceiver() (receiverName string, receiverType string)
 }
 
 func (s *StructInfo) Print() {
-	log.Println("struct:", s.name, "package:", s.packageName)
-	log.Println("filePath:", s.filePaths)
-	log.Println("methods:")
+	tool.Record(zap.String("struct", s.name), zap.String("package", s.packageName),
+		zap.Strings("file_paths", s.filePaths))
+	innerStructNames := lo.Map[*StructInfo, string](s.innerStruct, func(item *StructInfo, _ int) string {
+		return item.name
+	})
+	tool.Record(zap.Strings("inner_structs", innerStructNames))
+
+	innerInterfaceNames := lo.Map[*InterfaceInfo, string](s.innerInterface, func(item *InterfaceInfo, _ int) string {
+		return item.name
+	})
+	tool.Record(zap.Strings("inner_interfaces", innerInterfaceNames))
+	tool.Record(zap.String("methods", ""))
 	for _, method := range s.methods {
 		method.Print()
 	}
-	log.Println("innerStructs:")
-	for _, inner := range s.innerStruct {
-		log.Println(inner.name)
-	}
-	log.Println("innerInterface:")
-	for _, inner := range s.innerInterface {
-		log.Println(inner.name)
-	}
-	log.Println("--------------------")
 }
 
 type InterfaceInfo struct {
 	*BaseInfo
 	innerInterface []*InterfaceInfo
 	methods        []*MethodInfo
-	structs        []*StructInfo // implement the interfaceinnerInterface
+	structs        []*StructInfo // implement the interface
 }
 
 func (i *InterfaceInfo) CheckMethod(m *MethodInfo) bool {
@@ -191,21 +176,20 @@ func (i *InterfaceInfo) innerToken() []string {
 }
 
 func (i *InterfaceInfo) Print() {
-	log.Println("interface:", i.name, "package:", i.packageName)
-	log.Println("filePath:", i.filePaths)
-	log.Println("implements:")
+	tool.Record(zap.String("interface", i.name), zap.String("package_name", i.packageName),
+		zap.Strings("file_paths", i.filePaths))
+	tool.Record(zap.String("implements", ""))
 	for _, structInfo := range i.structs {
-		log.Println(structInfo.name, "path:", structInfo.filePaths)
+		tool.Record(zap.String("struct_name", structInfo.name), zap.Strings("file_path", structInfo.filePaths))
 	}
-	log.Println("methods:")
+	innerInterfaceNames := lo.Map[*InterfaceInfo, string](i.innerInterface, func(item *InterfaceInfo, _ int) string {
+		return item.name
+	})
+	tool.Record(zap.Strings("inner_interfaces", innerInterfaceNames))
+	tool.Record(zap.String("methods", ""))
 	for _, method := range i.methods {
 		method.Print()
 	}
-	log.Println("inner:")
-	for _, inner := range i.innerInterface {
-		log.Println(inner.name)
-	}
-	log.Println("--------------------")
 }
 
 type MethodInfo struct {
@@ -229,5 +213,5 @@ func (m *MethodInfo) Equal(t *MethodInfo) bool {
 }
 
 func (m *MethodInfo) Print() {
-	log.Println(m.name, "params:", m.params, "returns:", m.returns)
+	tool.Record(zap.String("name", m.name), zap.Strings("params", m.params), zap.Strings("returns", m.returns))
 }

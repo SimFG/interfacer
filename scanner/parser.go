@@ -36,7 +36,7 @@ type PackageParser struct {
 }
 
 func NewPackageParser(s *Scanner, curPack string, curDir string, astPack *ast.Package) *PackageParser {
-	//log.Println("curPack", curPack, "curDir", curDir)
+	tool.Info("NewPackageParser", zap.String("cur_pack", curPack), zap.String("cur_dir", curDir))
 	return &PackageParser{
 		scanner:            s,
 		curPack:            curPack,
@@ -52,7 +52,13 @@ func (p *PackageParser) Parse() {
 		p.ParseFile(name, file)
 	}
 
+	p.handInner()
+}
+
+func (p *PackageParser) handInner() {
+	tool.Info("handInner innerStructPost")
 	for s, i := range p.innerStructPost {
+		tool.Info(s, zap.Strings("inners", i))
 		lo.ForEach[string](i, func(item string, _ int) {
 			fullName := p.curPack + "." + item
 			if lo.Contains[string](p.structs, item) {
@@ -85,7 +91,9 @@ func (p *PackageParser) Parse() {
 		})
 	}
 
+	tool.Info("handInner innerInterfacePost")
 	for s, i := range p.innerInterfacePost {
+		tool.Info(s, zap.Strings("inners", i))
 		lo.ForEach[string](i, func(item string, _ int) {
 			fullName := p.curPack + "." + item
 			if lo.Contains[string](p.interfaces, item) {
@@ -105,9 +113,10 @@ func (p *PackageParser) Parse() {
 	}
 }
 
-//GetValueFromType Get value from the `*ast.Ident`/`*ast.SelectorExpr`/`*ast.StarExpr`
+// GetValueFromType Get value from the `*ast.Ident`/`*ast.SelectorExpr`/`*ast.StarExpr`
 // TODO handle the map / slice / func
 func (p *PackageParser) GetValueFromType(e ast.Expr) string {
+	tool.Info("GetValueFromType", zap.String("type", tool.TypeString(e)))
 	switch e.(type) {
 	case *ast.SelectorExpr:
 		selectExpr := e.(*ast.SelectorExpr)
@@ -122,9 +131,10 @@ func (p *PackageParser) GetValueFromType(e ast.Expr) string {
 	case *ast.StarExpr:
 		return "*" + p.GetValueFromType(e.(*ast.StarExpr).X)
 	default:
-		logger.Debug("default expr spec type", zap.String("type", tool.TypeString(e)))
+		tool.Info("WARN GetValueFromType")
+		return ""
 	}
-	return ""
+
 }
 
 func (p *PackageParser) HandleFieldListForInterface(fields *ast.FieldList, f func(value string, namesLen int)) {
@@ -132,7 +142,7 @@ func (p *PackageParser) HandleFieldListForInterface(fields *ast.FieldList, f fun
 		return
 	}
 	for _, param := range fields.List {
-		logger.Debug("func param", zap.Any("names", param.Names))
+		tool.Info("HandleFieldListForInterface param", zap.Any("names", param.Names))
 		value := p.GetValueFromType(param.Type)
 		f(value, len(param.Names))
 	}
@@ -159,15 +169,14 @@ func (p *PackageParser) HandleFuncType(funcType *ast.FuncType, methodInfo *Metho
 }
 
 func (p *PackageParser) ParseFile(fileFullPath string, astFile *ast.File) {
-	//fmt.Println("file-fileFullPath", fileFullPath, astFile.Name)
+	tool.Info("PackageParser ParseFile", zap.String("file_full_path", fileFullPath), zap.Any("ast_file_name", astFile.Name))
 
 	var (
-		importList = make(map[string]string)
-		// the value means whether it's method is the point
+		importList      = make(map[string]string)
 		structList      = make(map[string]*StructInfo)
 		interfaceList   = make(map[string]*InterfaceInfo)
 		funcList        = make(map[string][]*MethodInfo) // the method maybe use the struct which isn't scanned
-		innerInterfaces = make(map[string][]string)      // TODO 暂不支持生成
+		innerInterfaces = make(map[string][]string)
 		innerStructs    = make(map[string][]string)
 	)
 
@@ -213,18 +222,16 @@ func (p *PackageParser) ParseFile(fileFullPath string, astFile *ast.File) {
 							// get inner interface
 							value := p.GetValueFromType(filed.Type)
 							if value == "" {
-								logger.Debug("default field type spec type", zap.String("type", tool.TypeString(filed.Type)))
+								tool.Info("default field type spec type", zap.String("type", tool.TypeString(filed.Type)))
 							} else {
 								innerInterfaces[typeName] = append(innerInterfaces[typeName], value)
 							}
-							// TODO inner interface
 						}
 
 					}
 				}
 			default:
-				//log.Println("typeSpec.Type", tool.TypeString(typeSpec.Type))
-				logger.Debug("default type spec type", zap.String("type", tool.TypeString(typeSpec.Type)))
+				tool.Info("default type spec type", zap.String("type", tool.TypeString(typeSpec.Type)))
 			}
 		case *ast.FuncDecl:
 			funcDecl := x.(*ast.FuncDecl)
@@ -254,12 +261,18 @@ func (p *PackageParser) ParseFile(fileFullPath string, astFile *ast.File) {
 			})
 		default:
 			if x != nil {
-				//log.Println("x.type", tool.TypeString(x))
-				logger.Debug("default node type", zap.String("type", tool.TypeString(x)))
+				tool.Info("default node type", zap.String("type", tool.TypeString(x)))
 			}
 		}
 		return true
 	})
+
+	tool.Info("import list", zap.Any("value", importList))
+	tool.Info("struct list", zap.Any("value", structList))
+	tool.Info("interface list", zap.Any("value", interfaceList))
+	tool.Info("func list", zap.Any("value", funcList))
+	tool.Info("inner interface list", zap.Any("value", innerInterfaces))
+	tool.Info("inner struct list", zap.Any("value", innerStructs))
 
 	// convert the simple fileFullPath to full fileFullPath
 	handleName := func(name string) string {
@@ -374,7 +387,7 @@ func (p *PackageParser) ParseFile(fileFullPath string, astFile *ast.File) {
 
 	for i, funcs := range funcList {
 		fullName := handleName(i)
-		// 方法和类在不同文件，但是先扫描了对应的方法
+		// Methods and structs are in different files, but the corresponding methods are scanned first
 		if i == fullName || i == "*"+fullName {
 			fullName = p.curPack + "." + fullName
 		}
@@ -391,7 +404,4 @@ func (p *PackageParser) ParseFile(fileFullPath string, astFile *ast.File) {
 
 	p.structs = append(p.structs, lo.Keys[string, *StructInfo](structList)...)
 	p.interfaces = append(p.interfaces, lo.Keys[string, *InterfaceInfo](interfaceList)...)
-
-	//log.Println("funcList", fmt.Sprintf("%#v", funcList))
-	//log.Println("importList", importList)
 }

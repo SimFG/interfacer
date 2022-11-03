@@ -17,8 +17,7 @@
 package tool
 
 import (
-	"fmt"
-	"log"
+	"go.uber.org/zap"
 	"os"
 	"reflect"
 	"strings"
@@ -43,7 +42,7 @@ func Timer(name string, fn func()) {
 	start := time.Now()
 	fn()
 	end := time.Now()
-	log.Println(name, "start:", start, "end:", end, "cost:", end.Second()-start.Second())
+	Info("timer_"+name, zap.Time("start", start), zap.Time("end", end), zap.Int64("cost/ms", end.Sub(start).Milliseconds()))
 }
 
 // PathJoin path.Join()
@@ -52,42 +51,39 @@ func PathJoin(paths ...string) string {
 }
 
 // FileWalk fn, if the return value is false, it won't continue to walk
-func FileWalk(dir string, onlyDir bool, fn func(absPath string, fileInfo os.FileInfo) bool) error {
+func FileWalk(dir string, onlyDir bool, fn func(absPath string, fileInfo os.FileInfo) bool) {
+	Info("FileWalk", zap.String("dir", dir), zap.Bool("only_dir", onlyDir))
+
 	rootInfo, err := os.Stat(dir)
 	if err != nil {
-		log.Println("os.Stat err", dir, err)
-		return err
+		Panic("os.Stat err", zap.Error(err))
 	}
 	if onlyDir && !rootInfo.IsDir() {
-		return nil
+		return
 	}
 	if ok := fn(dir, rootInfo); !ok {
-		return nil
+		return
 	}
 	if !rootInfo.IsDir() {
-		return nil
+		return
 	}
 	file, err := os.Open(dir)
 	if err != nil {
-		log.Println("os.Open err", err)
+		Panic("os.Open err", zap.Error(err))
 	}
 
-	//log.Println("fileName", file.Name())
 	fileInfos, err := file.Readdir(0)
 	file.Close()
 	if err != nil {
-		log.Println("file.Readdir err", err)
-		return err
+		Panic("file.Readdir err", zap.Error(err))
 	}
 	for _, fileInfo := range fileInfos {
+		Info("sub_file", zap.String("file_name", fileInfo.Name()))
 		if onlyDir && !fileInfo.IsDir() {
 			continue
 		}
-		if err = FileWalk(PathJoin(file.Name(), fileInfo.Name()), onlyDir, fn); err != nil {
-			return err
-		}
+		FileWalk(PathJoin(file.Name(), fileInfo.Name()), onlyDir, fn)
 	}
-	return nil
 }
 
 // ToMap More functions like it, visit: https://github.com/samber/lo
@@ -116,19 +112,18 @@ func TypeString(i interface{}) string {
 }
 
 // HandleError panic directly
-func HandleError(e interface{}) {
+func HandleError(e error) {
 	if e != nil {
-		panic(e)
+		Panic("Panic HandleError", zap.Error(e))
 	}
 }
 
-func HandleErrorWithMsg(e interface{}, msg ...string) {
+func HandleErrorWithMsg(e error, msg ...string) {
 	if e != nil {
-		fmt.Println(msg)
-		panic(e)
+		Panic("Panic HandleErrorWithMsg", zap.Strings("msg", msg), zap.Error(e))
 	}
 }
 
-func PrintDetail(detail string, i interface{}) {
-	log.Println(detail+" - PrintDetail", fmt.Sprintf("%#v", i))
+func PrintDetail(objectName string, i interface{}) {
+	Info("object detail", zap.String("objectName", objectName), zap.Any("detail", i))
 }
