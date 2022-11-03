@@ -21,6 +21,7 @@ import (
 	"bytes"
 	"github.com/SimFG/interfacer/tool"
 	"github.com/samber/lo"
+	"go.uber.org/zap"
 	"go/ast"
 	"go/format"
 	"go/parser"
@@ -32,6 +33,8 @@ import (
 )
 
 func WriteFile(fileName string, writers []Writer) {
+	tool.Info("WriteFile", zap.String("file_name", fileName))
+
 	var buf bytes.Buffer
 	fset := token.NewFileSet()
 	fileNode, err := parser.ParseFile(fset, fileName, nil, parser.ParseComments)
@@ -54,6 +57,8 @@ func WriteFile(fileName string, writers []Writer) {
 }
 
 func WriteFileForLine(fileName string, writers []Writer) {
+	tool.Info("WriteFileForLine", zap.String("file_name", fileName))
+
 	fset := token.NewFileSet()
 	fileNode, err := parser.ParseFile(fset, fileName, nil, parser.ParseComments)
 	tool.HandleError(err)
@@ -74,6 +79,7 @@ func (w WriteFunc) Write(fset *token.FileSet, fileNode *ast.File) {
 
 func GetImportWriter(alia string, importValue string) Writer {
 	return WriteFunc(func(fset *token.FileSet, fileNode *ast.File) {
+		tool.Info("ImportWriter", zap.String("alia", alia), zap.String("import_value", importValue))
 		var ident *ast.Ident
 		var importSpec *ast.GenDecl
 		if alia != "" {
@@ -106,6 +112,7 @@ func GetImportWriter(alia string, importValue string) Writer {
 }
 
 func GetIdent(i string) ast.Expr {
+	tool.Info("GetIdent", zap.String("i", i))
 	isStar := false
 	if i[0] == '*' {
 		isStar = true
@@ -133,6 +140,11 @@ func GetIdent(i string) ast.Expr {
 
 func GetFuncWriter(receiverName string, receiverType string, funcName string, paramNames []string, paramTypes []string, returnTypes []string, returnDefaultValues []string) Writer {
 	return WriteFunc(func(fset *token.FileSet, fileNode *ast.File) {
+		tool.Info("FuncWriter", zap.String("receiver_name", receiverName), zap.String("receiver_type", receiverType),
+			zap.String("func_name", funcName), zap.Strings("param_names", paramNames),
+			zap.Strings("param_types", paramTypes), zap.Strings("return_types", returnTypes),
+			zap.Strings("return_default_values", returnDefaultValues))
+
 		paramFieldList := &ast.FieldList{}
 		if len(paramNames) > 0 {
 			lo.ForEach[string](paramNames, func(item string, index int) {
@@ -185,6 +197,9 @@ func GetFuncWriter(receiverName string, receiverType string, funcName string, pa
 
 func GetInterfaceWrite(interfaceName string, funcName string, paramNames []string, paramTypes []string, returnTypes []string) Writer {
 	return WriteFunc(func(fset *token.FileSet, fileNode *ast.File) {
+		tool.Info("InterfaceWrite",
+			zap.String("func_name", funcName), zap.Strings("param_names", paramNames),
+			zap.Strings("param_types", paramTypes), zap.Strings("return_types", returnTypes))
 		var (
 			ok            bool
 			typeSpec      *ast.TypeSpec
@@ -203,6 +218,7 @@ func GetInterfaceWrite(interfaceName string, funcName string, paramNames []strin
 				return true
 			}
 
+			tool.Info("InterfaceWrite hit")
 			paramFieldList := &ast.FieldList{}
 			if len(paramNames) > 0 {
 				lo.ForEach[string](paramNames, func(item string, index int) {
@@ -228,7 +244,7 @@ func GetInterfaceWrite(interfaceName string, funcName string, paramNames []strin
 				},
 			}
 			interfaceType.Methods.List = append(interfaceType.Methods.List, methodField)
-			return true
+			return false
 		})
 	})
 }
@@ -236,6 +252,7 @@ func GetInterfaceWrite(interfaceName string, funcName string, paramNames []strin
 // GetInterfaceWrite2 dismiss the influence of the comment
 func GetInterfaceWrite2(fileName string, interfaceName string, method string) Writer {
 	return WriteFunc(func(fset *token.FileSet, fileNode *ast.File) {
+		tool.Info("InterfaceWrite2", zap.String("interface_name", interfaceName), zap.String("method", method))
 		var (
 			ok       bool
 			typeSpec *ast.TypeSpec
@@ -260,6 +277,7 @@ func GetInterfaceWrite2(fileName string, interfaceName string, method string) Wr
 }
 
 func FileInsertContent(fileName string, line int, content string) {
+	tool.Info("FileInsertContent", zap.String("file_name", fileName), zap.Int("line", line), zap.String("content", content))
 	file, err := os.OpenFile(fileName, os.O_RDWR, 0)
 	tool.HandleErrorWithMsg(err, "File open failed!")
 

@@ -24,9 +24,8 @@ import (
 	"go/token"
 	"os"
 	"strings"
+	"sync"
 )
-
-var logger = zap.L().With(zap.String("package", "scanner"))
 
 type PostParser interface {
 	Post(structs map[string]*StructInfo, interfaces map[string]*InterfaceInfo)
@@ -52,6 +51,7 @@ type Scanner struct {
 }
 
 func New(p string, r string) *Scanner {
+	tool.Info("Scanner New", zap.String("package", p), zap.String("path", r))
 	return &Scanner{
 		structs:    make(map[string]*StructInfo),
 		interfaces: make(map[string]*InterfaceInfo),
@@ -60,29 +60,40 @@ func New(p string, r string) *Scanner {
 	}
 }
 
-func (s *Scanner) Start(dir string, excludeDir []string) error {
+func (s *Scanner) Start(dir string, excludeDir []string) {
+	tool.Info("Scanner Start", zap.String("dir", dir), zap.Strings("exclude_dir", excludeDir))
 	excludeDirMap := tool.ToMap(excludeDir)
-	err := tool.FileWalk(dir, true, func(absPath string, fileInfo os.FileInfo) bool {
+	tool.FileWalk(dir, true, func(absPath string, fileInfo os.FileInfo) bool {
+		tool.Info("File Walk inner", zap.String("abs_path", absPath))
 		if _, ok := excludeDirMap[fileInfo.Name()]; ok {
 			return false
 		}
 		s.parseDir(absPath)
 		return true
 	})
-	tool.HandleError(err)
 
-	lo.ForEach[PostParser](s.postParserFuncs, func(item PostParser, index int) {
+	lo.ForEach[PostParser](s.postParserFuncs, func(item PostParser, _ int) {
 		item.Post(s.structs, s.interfaces)
 	})
 
 	// TODO more go routine
-	for _, structInfo := range s.structs {
-		structInfo.Tokens()
-	}
+	w := sync.WaitGroup{}
+	w.Add(1)
+	go func() {
+		defer w.Done()
+		for _, structInfo := range s.structs {
+			structInfo.Tokens()
+		}
+	}()
 
-	for _, interfaceInfo := range s.interfaces {
-		interfaceInfo.Tokens()
-	}
+	w.Add(1)
+	go func() {
+		defer w.Done()
+		for _, interfaceInfo := range s.interfaces {
+			interfaceInfo.Tokens()
+		}
+	}()
+	w.Wait()
 
 	for _, structInfo := range s.structs {
 		for _, interfaceInfo := range s.interfaces {
@@ -91,12 +102,11 @@ func (s *Scanner) Start(dir string, excludeDir []string) error {
 			}
 		}
 	}
-
-	//s.structs["github.com/milvus-io/milvus/internal/proxy.queryTask"].Print()
-	return nil
 }
 
 func (s *Scanner) parseDir(dir string) error {
+	tool.Info("Scanner parseDir", zap.String("dir", dir))
+
 	fs := token.NewFileSet()
 	result, err := parser.ParseDir(fs, dir, nil, 0)
 	tool.HandleErrorWithMsg(err, "fail to parse dir:", dir)
@@ -106,9 +116,8 @@ func (s *Scanner) parseDir(dir string) error {
 		lastWord := dir[lastSep+1:]
 		curPackage := strings.Replace(dir, s.rootPath, s.packageStr, 1)
 		if lastWord != r.Name {
-			logger.Warn("package name is uncommon", zap.String("dir", dir), zap.String("package", r.Name))
+			tool.Info("WARN package name is uncommon", zap.String("dir", dir), zap.String("package", r.Name))
 		}
-		//log.Println("package name:", r.Name, dir, curPackage)
 		p := NewPackageParser(s, curPackage, dir, r)
 		p.Parse()
 	}
@@ -127,5 +136,8 @@ func (s *Scanner) Print() {
 
 func (s *Scanner) GetInterface(name string) *InterfaceInfo {
 	interfaceInfo := s.interfaces[name]
+	if interfaceInfo != nil {
+		interfaceInfo.Print()
+	}
 	return interfaceInfo
 }

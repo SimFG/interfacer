@@ -31,6 +31,10 @@ new_method: "Hello(f int64) (int, error)"
 return_default_values: "0,nil"
 write_paths:
   - "github.com/SimFG/interfacer/example/proxy/all/s.Node,/Users/derek/xxx/interfacer/example/all/s/st.go"
+exclude_dirs:
+  - "foo"
+enable_debug: false
+enable_record: false
 ```
 2. command params
 ```bash
@@ -46,6 +50,9 @@ go run interfacer.go
 - interface: the interface you want to add a new method to it. And its full name is required
 - method: declaration of the newly added method
 - returns: the default return values of new method
+- exclude dirs: these dirs will be ignored
+- enable_debug: set true if you find a problem while using this tool, and the processing speed will slow because it needs to write a lot of logs to the files.
+- enable_record: set true if you want to get the relations between all structs and interfaces.
 
 ### Source build
 1. clone the repository
@@ -59,12 +66,13 @@ go run interfacer.go
 
 ## TODO
 - Dealing with generated code out of order of comments
-  - for interface
+  - for interface (done)
   - for struct method
 - Handle some special struct or interface
 - Check the input params
 - Exclude dirs or files
 - More readable codes
-- Debug mode, print the detail info
+- Debug mode, print the detail info (done)
 - More useful tool of reading and writing `go` file
 - customer the insert position
+- idea plugin
