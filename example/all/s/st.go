@@ -25,6 +25,3 @@ func (n *Node) Foo(i int) {
 func (n *Node) Hello(f int64) (int, error) {
 	return 0, nil
 }
-func (n *Node) Hello(f int64) (int, error) {
-	return 0, nil
-}

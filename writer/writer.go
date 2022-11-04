@@ -145,6 +145,10 @@ func GetFuncWriter(receiverName string, receiverType string, funcName string, pa
 			zap.Strings("param_types", paramTypes), zap.Strings("return_types", returnTypes),
 			zap.Strings("return_default_values", returnDefaultValues))
 
+		if ExistedMethodForStruct(fileNode.Decls, funcName) {
+			return
+		}
+
 		paramFieldList := &ast.FieldList{}
 		if len(paramNames) > 0 {
 			lo.ForEach[string](paramNames, func(item string, index int) {
@@ -195,6 +199,25 @@ func GetFuncWriter(receiverName string, receiverType string, funcName string, pa
 	})
 }
 
+func ExistedMethodForStruct(decls []ast.Decl, method string) bool {
+	hasExist := false
+	var (
+		funcDecl *ast.FuncDecl
+		ok       bool
+	)
+
+	lo.ForEach[ast.Decl](decls, func(item ast.Decl, index int) {
+		if funcDecl, ok = item.(*ast.FuncDecl); !ok {
+			return
+		}
+		if funcDecl.Name != nil && funcDecl.Name.Name == method {
+			tool.Warn("the method has existed in this struct")
+			hasExist = true
+		}
+	})
+	return hasExist
+}
+
 func GetInterfaceWrite(interfaceName string, funcName string, paramNames []string, paramTypes []string, returnTypes []string) Writer {
 	return WriteFunc(func(fset *token.FileSet, fileNode *ast.File) {
 		tool.Info("InterfaceWrite",
@@ -219,6 +242,9 @@ func GetInterfaceWrite(interfaceName string, funcName string, paramNames []strin
 			}
 
 			tool.Info("InterfaceWrite hit")
+			if ExistedMethodForInterface(interfaceType.Methods, funcName) {
+				return false
+			}
 			paramFieldList := &ast.FieldList{}
 			if len(paramNames) > 0 {
 				lo.ForEach[string](paramNames, func(item string, index int) {
@@ -254,26 +280,44 @@ func GetInterfaceWrite2(fileName string, interfaceName string, method string) Wr
 	return WriteFunc(func(fset *token.FileSet, fileNode *ast.File) {
 		tool.Info("InterfaceWrite2", zap.String("interface_name", interfaceName), zap.String("method", method))
 		var (
-			ok       bool
-			typeSpec *ast.TypeSpec
+			ok            bool
+			interfaceType *ast.InterfaceType
+			typeSpec      *ast.TypeSpec
 		)
 		ast.Inspect(fileNode, func(x ast.Node) bool {
 			if typeSpec, ok = x.(*ast.TypeSpec); !ok {
 				return true
 			}
-			if _, ok = typeSpec.Type.(*ast.InterfaceType); !ok {
+			if interfaceType, ok = typeSpec.Type.(*ast.InterfaceType); !ok {
 				return true
 			}
 			typeName := typeSpec.Name.Name
 			if typeName != interfaceName {
 				return true
 			}
+
+			tool.Info("InterfaceWrite2 hit")
+			funcName := strings.TrimSpace(method[:strings.Index(method, "(")])
+			funcName = strings.Trim(funcName, "\\t")
+			if ExistedMethodForInterface(interfaceType.Methods, funcName) {
+				return false
+			}
 			pos := fset.Position(x.End())
 			FileInsertContent(fileName, pos.Line-1, method)
 			return false
 		})
 	})
+}
 
+func ExistedMethodForInterface(list *ast.FieldList, methodName string) bool {
+	hasExist := false
+	lo.ForEach[*ast.Field](list.List, func(item *ast.Field, index int) {
+		if len(item.Names) != 0 && item.Names[0].Name == methodName {
+			tool.Warn("the method has existed in this interface")
+			hasExist = true
+		}
+	})
+	return hasExist
 }
 
 func FileInsertContent(fileName string, line int, content string) {

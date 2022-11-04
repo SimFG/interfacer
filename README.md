@@ -71,8 +71,12 @@ go run interfacer.go
 - Handle some special struct or interface
 - Check the input params
 - Exclude dirs or files
+  - accurate (done)
+  - fuzzy matching
 - More readable codes
 - Debug mode, print the detail info (done)
 - More useful tool of reading and writing `go` file
-- customer the insert position
-- idea plugin
+- Customer the insert position
+- Idea plugin
+- Scan one third part file and then get all the implements of the interface, like the protobuf interface 
+- It will be ignored if the new method has existed (done)

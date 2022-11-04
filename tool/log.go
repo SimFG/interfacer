@@ -85,6 +85,12 @@ func Info(msg string, fields ...zap.Field) {
 	}
 }
 
+func Warn(msg string, fields ...zap.Field) {
+	if isDebug {
+		logger.Warn(msg, fields...)
+	}
+}
+
 func Panic(msg string, fields ...zap.Field) {
 	logger.Panic(msg, fields...)
 }
