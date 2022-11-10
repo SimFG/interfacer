@@ -17,6 +17,7 @@
 package tool
 
 import (
+	"fmt"
 	"go.uber.org/zap"
 	"os"
 	"reflect"
@@ -120,6 +121,7 @@ func HandleError(e error) {
 
 func HandleErrorWithMsg(e error, msg ...string) {
 	if e != nil {
+		fmt.Println(e, msg)
 		Panic("Panic HandleErrorWithMsg", zap.Strings("msg", msg), zap.Error(e))
 	}
 }

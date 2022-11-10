@@ -66,19 +66,20 @@ go run interfacer.go
 
 ## Roadmap
 - Dealing with generated code out of order of comments
-  - for interface (**done**)
+  - for interface ✅
   - for struct method
 - Exclude dirs or files
-  - accurate (**done**)
+  - accurate ✅
   - fuzzy matching
-- Debug mode, print the detail info (**done**)
-- It will be ignored if the new method has existed (**done**)
+- Debug mode, print the detail info ✅
+- It will be ignored if the new method has existed ✅
 - Scan one third part file and then get all the implements of the interface, like the protobuf interface
 - Check the input params
-- Customer the `interfacer.yaml`
+- Customer the configuration yaml file path ✅
 - Write the method content easily by the way similar to writing interface
 - Idea plugin
 - Customer the insert position
+- Support to generate more methods
 - More readable codes
 - Handle some special struct or interface
 - More useful tool of reading and writing `go` file

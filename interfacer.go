@@ -30,6 +30,12 @@ import (
 	"strings"
 )
 
+type SubModule struct {
+	ProjectDir    string   `yaml:"project_dir"`
+	ProjectModule string   `yaml:"project_module"`
+	ExcludeDirs   []string `yaml:"exclude_dirs,flow"`
+}
+
 type Config struct {
 	WritePaths          []string `yaml:"write_paths,flow"`
 	ExcludeDirs         []string `yaml:"exclude_dirs,flow"`
@@ -49,6 +55,7 @@ var (
 		Run:   implement,
 	}
 
+	yamlFile            string
 	projectDir          string
 	projectModule       string
 	interfaceFullName   string
@@ -59,9 +66,53 @@ var (
 )
 
 func init() {
-	if !readYaml() {
-		return
+	interfacer.Flags().StringVar(&yamlFile, "yaml-file", "interfacer.yaml", "full project dir")
+	interfacer.Flags().StringVar(&projectDir, "project-dir", config.ProjectDir, "full project dir")
+	interfacer.Flags().StringVar(&projectModule, "project-module", config.ProjectModule, "project module")
+	interfacer.Flags().StringVar(&interfaceFullName, "interface", config.InterfaceFullName, "interface full name, like: go.uber.org/zap/zapcore.Core")
+	interfacer.Flags().StringVar(&newMethod, "method", config.NewMethod, "the method declaration")
+	interfacer.Flags().StringVar(&returnDefaultValues, "returns", config.ReturnDefaultValues, "the return value of the method, like: nil,nil")
+
+	tool.Info("cmd params", zap.String("yaml-file", yamlFile), zap.String("project_dir", projectDir), zap.String("project_module", projectModule),
+		zap.String("interface_full_name", interfaceFullName), zap.String("method", newMethod),
+		zap.String("return_default_value", returnDefaultValues), zap.Any("config", config))
+}
+
+func readYaml() {
+	defer func() {
+		if e := recover(); e != nil {
+			tool.Info("panic readYaml", zap.Any("err", e))
+		}
+	}()
+
+	_, err := os.Stat(yamlFile)
+	tool.HandleErrorWithMsg(err, "fail to stat "+yamlFile)
+
+	f, err := os.Open(yamlFile)
+	tool.HandleErrorWithMsg(err, "fail to open "+yamlFile)
+
+	err = yaml.NewDecoder(f).Decode(config)
+	tool.HandleErrorWithMsg(err, "fail to decode "+yamlFile)
+
+	if projectDir == "" {
+		projectDir = config.ProjectDir
 	}
+	if projectModule == "" {
+		projectModule = config.ProjectModule
+	}
+	if interfaceFullName == "" {
+		interfaceFullName = config.InterfaceFullName
+	}
+	if newMethod == "" {
+		newMethod = config.NewMethod
+	}
+	if returnDefaultValues == "" {
+		returnDefaultValues = config.ReturnDefaultValues
+	}
+}
+
+func implement(cmd *cobra.Command, args []string) {
+	readYaml()
 	lo.ForEach[string](config.WritePaths, func(item string, index int) {
 		pathInfo := strings.Split(item, ",")
 		writePaths[pathInfo[0]] = pathInfo[1]
@@ -70,32 +121,6 @@ func init() {
 	tool.EnableRecord(config.EnableRecord)
 	tool.EnableDebug(config.EnableDebug)
 
-	interfacer.Flags().StringVar(&projectDir, "project-dir", config.ProjectDir, "full project dir")
-	interfacer.Flags().StringVar(&projectModule, "project-module", config.ProjectModule, "project module")
-	interfacer.Flags().StringVar(&interfaceFullName, "interface", config.InterfaceFullName, "interface full name, like: go.uber.org/zap/zapcore.Core")
-	interfacer.Flags().StringVar(&newMethod, "method", config.NewMethod, "the method declaration")
-	interfacer.Flags().StringVar(&returnDefaultValues, "returns", config.ReturnDefaultValues, "the return value of the method, like: nil,nil")
-
-	tool.Info("cmd params", zap.String("project_dir", projectDir), zap.String("project_module", projectModule),
-		zap.String("interface_full_name", interfaceFullName), zap.String("method", newMethod),
-		zap.String("return_default_value", returnDefaultValues), zap.Any("config", config))
-}
-
-func readYaml() bool {
-	fileName := "interfacer.yaml"
-	_, err := os.Stat(fileName)
-	tool.HandleErrorWithMsg(err, "fail to stat interfacer.yaml")
-
-	f, err := os.Open("interfacer.yaml")
-	tool.HandleErrorWithMsg(err, "fail to open interfacer.yaml")
-
-	err = yaml.NewDecoder(f).Decode(config)
-	tool.HandleErrorWithMsg(err, "fail to decode interfacer.yaml")
-
-	return true
-}
-
-func implement(cmd *cobra.Command, args []string) {
 	if projectDir == "" || projectModule == "" || interfaceFullName == "" || newMethod == "" {
 		tool.HandleErrorWithMsg(errors.New("invalid param"), "The params should be filled")
 	}
