@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"github.com/SimFG/interfacer/scanner"
 	"github.com/SimFG/interfacer/tool"
-	"github.com/SimFG/interfacer/writer"
 	"github.com/samber/lo"
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
@@ -31,21 +30,25 @@ import (
 )
 
 type SubModule struct {
-	ProjectDir    string   `yaml:"project_dir"`
-	ProjectModule string   `yaml:"project_module"`
-	ExcludeDirs   []string `yaml:"exclude_dirs,flow"`
-}
-
-type Config struct {
-	WritePaths          []string `yaml:"write_paths,flow"`
-	ExcludeDirs         []string `yaml:"exclude_dirs,flow"`
 	ProjectDir          string   `yaml:"project_dir"`
 	ProjectModule       string   `yaml:"project_module"`
 	InterfaceFullName   string   `yaml:"interface_full_name"`
-	NewMethod           string   `yaml:"new_method"`
+	Method              string   `yaml:"method"`
 	ReturnDefaultValues string   `yaml:"return_default_values"`
-	EnableRecord        bool     `yaml:"enable_record"`
-	EnableDebug         bool     `yaml:"enable_debug"`
+	ExcludeDirs         []string `yaml:"exclude_dirs,flow"`
+}
+
+type Config struct {
+	WritePaths          []string    `yaml:"write_paths,flow"`
+	ExcludeDirs         []string    `yaml:"exclude_dirs,flow"`
+	ProjectDir          string      `yaml:"project_dir"`
+	ProjectModule       string      `yaml:"project_module"`
+	InterfaceFullName   string      `yaml:"interface_full_name"`
+	NewMethod           string      `yaml:"new_method"`
+	ReturnDefaultValues string      `yaml:"return_default_values"`
+	EnableRecord        bool        `yaml:"enable_record"`
+	EnableDebug         bool        `yaml:"enable_debug"`
+	SubModules          []SubModule `yaml:"sub_modules,flow"`
 }
 
 var (
@@ -129,67 +132,20 @@ func implement(cmd *cobra.Command, args []string) {
 	tool.Timer("Interfacer", func() {
 		s.Start(projectDir, config.ExcludeDirs)
 		s.Print()
+		WriteMethod(s, interfaceFullName, newMethod, returnDefaultValues, false)
 
-		interfaceInfo := s.GetInterface(interfaceFullName)
-		if interfaceInfo == nil {
-			tool.HandleErrorWithMsg(errors.New("not found the interface"), "interface name:", interfaceFullName)
+		for _, sub := range config.SubModules {
+			if sub.InterfaceFullName == "" || sub.Method == "" {
+				continue
+			}
+			subScan := scanner.New(sub.ProjectModule, sub.ProjectDir)
+			subScan.DisableImplementRelation()
+			subScan.Start(sub.ProjectDir, sub.ExcludeDirs)
+			subScan.Print()
+			methodName := sub.Method[:strings.Index(sub.Method, "(")]
+			s.SubModule(subScan, sub.InterfaceFullName, methodName)
+			WriteMethod(s, sub.InterfaceFullName, sub.Method, sub.ReturnDefaultValues, true)
 		}
-
-		interfaceName := interfaceFullName[strings.LastIndex(interfaceFullName, ".")+1:]
-		i := strings.Index(newMethod, "(")
-		j := strings.Index(newMethod, ")")
-		x := strings.LastIndex(newMethod, "(")
-		y := strings.LastIndex(newMethod, ")")
-		tool.Info("new method split", zap.Ints("splits", []int{i, j, x, y}))
-
-		var (
-			funcName       string
-			paramNames     []string
-			paramTypes     []string
-			returnTypes    []string
-			returnDefaults []string
-		)
-
-		funcName = newMethod[:i]
-		returnDefaults = strings.Split(returnDefaultValues, ",")
-
-		lo.ForEach[string](strings.Split(newMethod[i+1:j], ","), func(item string, index int) {
-			item = strings.TrimSpace(item)
-			if item == "" {
-				return
-			}
-			paramInfo := strings.Split(item, " ")
-			paramNames = append(paramNames, paramInfo[0])
-			paramTypes = append(paramTypes, paramInfo[1])
-		})
-		if i == x && j == y {
-			returnType := strings.TrimSpace(newMethod[j+1:])
-			if returnType != "" {
-				returnTypes = append(returnTypes, strings.TrimSpace(newMethod[j+1:]))
-			}
-		} else {
-			lo.ForEach[string](strings.Split(newMethod[x+1:y], ","), func(item string, index int) {
-				item = strings.TrimSpace(item)
-				if item == "" {
-					return
-				}
-				returnTypes = append(returnTypes, item)
-			})
-		}
-		tool.Info("method signature", zap.String("func_name", funcName),
-			zap.Strings("param_names", paramNames), zap.Strings("param_types", paramTypes),
-			zap.Strings("return_types", returnTypes), zap.Strings("return_defaults", returnDefaults))
-
-		interfaceFileName := interfaceInfo.FilePaths()[0]
-		writer.WriteFileForLine(interfaceFileName, []writer.Writer{writer.GetInterfaceWrite2(interfaceFileName, interfaceName, "\t"+newMethod)})
-		lo.ForEach[*scanner.StructInfo](interfaceInfo.GetImplements(), func(item *scanner.StructInfo, index int) {
-			writePath := item.FilePaths()[0]
-			if p, ok := writePaths[item.Name()]; ok {
-				writePath = p
-			}
-			receiverName, receiverType := item.MethodReceiver()
-			writer.WriteFile(writePath, []writer.Writer{writer.GetFuncWriter(receiverName, receiverType, funcName, paramNames, paramTypes, returnTypes, returnDefaults)})
-		})
 	})
 }
 

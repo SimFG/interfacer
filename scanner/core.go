@@ -47,22 +47,41 @@ type Scanner struct {
 	interfaces      map[string]*InterfaceInfo
 	packageStr      string
 	rootPath        string
-	onlyInterface   bool
+	enableImplement bool
 	postParserFuncs []PostParser
 }
 
 func New(p string, r string) *Scanner {
 	tool.Info("Scanner New", zap.String("package", p), zap.String("path", r))
 	return &Scanner{
-		structs:    make(map[string]*StructInfo),
-		interfaces: make(map[string]*InterfaceInfo),
-		packageStr: p,
-		rootPath:   r,
+		structs:         make(map[string]*StructInfo),
+		interfaces:      make(map[string]*InterfaceInfo),
+		packageStr:      p,
+		rootPath:        r,
+		enableImplement: true,
 	}
 }
 
-func (s *Scanner) OnlyInterface(b bool) {
-	s.onlyInterface = b
+func (s *Scanner) DisableImplementRelation() {
+	s.enableImplement = false
+}
+
+func (s *Scanner) SubModule(sub *Scanner, fullInterfaceName string, method string) {
+	tool.Info("sub module", zap.String("full_interface_name", fullInterfaceName), zap.String("method", method))
+	interfaceInfo, ok := sub.interfaces[fullInterfaceName]
+	if !ok {
+		tool.Panic("not found the interface name in the sub module")
+	}
+	if _, ok = s.interfaces[fullInterfaceName]; ok {
+		tool.Panic("found the interface name in the root module")
+	}
+	interfaceInfo.ExcludeTokens([]string{method})
+	for _, structInfo := range s.structs {
+		if structInfo.HasImplementInterface(interfaceInfo) {
+			interfaceInfo.structs = append(interfaceInfo.structs, structInfo)
+		}
+	}
+	s.interfaces[fullInterfaceName] = interfaceInfo
 }
 
 func (s *Scanner) Start(dir string, excludeDir []string) {
@@ -99,6 +118,10 @@ func (s *Scanner) Start(dir string, excludeDir []string) {
 		}
 	}()
 	w.Wait()
+
+	if !s.enableImplement {
+		return
+	}
 
 	for _, structInfo := range s.structs {
 		for _, interfaceInfo := range s.interfaces {

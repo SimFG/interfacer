@@ -7,3 +7,18 @@ write_paths:
   - "github.com/SimFG/interfacer/example/proxy/all/s.Node,/Users/derek/xxx/interfacer/example/all/s/st.go"
 enable_debug: true
 enable_record: true
+
+sub_modules:
+  -
+    project_dir: "/Users/derek/fubang/interfacer/example/interfacee"
+    project_module: "github.com/SimFG/interfacer/example/interfacee"
+    exclude_dirs:
+      - "dir1"
+      - "dir2"
+  -
+    project_dir: "/Users/derek/fubang/interfacer/example/implemente"
+    project_module: "github.com/SimFG/interfacer/example/implemente"
+    interface_full_name: "github.com/SimFG/interfacer/example/implemente/typee.Node"
+    method: "GetStatic()"
+    exclude_dirs:
+      - "coord"

@@ -144,7 +144,11 @@ func (p *PackageParser) HandleFieldListForInterface(fields *ast.FieldList, f fun
 	for _, param := range fields.List {
 		tool.Info("HandleFieldListForInterface param", zap.Any("names", param.Names))
 		value := p.GetValueFromType(param.Type)
-		f(value, len(param.Names))
+		times := len(param.Names)
+		if times == 0 {
+			times = 1
+		}
+		f(value, times)
 	}
 }
 
@@ -159,9 +163,6 @@ func (p *PackageParser) HandleFuncType(funcType *ast.FuncType, methodInfo *Metho
 	p.HandleFieldListForInterface(funcType.Results, func(value string, namesLen int) {
 		tool.IfF(value != "", func() {
 			tool.Times(namesLen, func(index int) {
-				methodInfo.returns = append(methodInfo.returns, value)
-			})
-			tool.IfF(namesLen == 0, func() {
 				methodInfo.returns = append(methodInfo.returns, value)
 			})
 		})
@@ -278,6 +279,11 @@ func (p *PackageParser) ParseFile(fileFullPath string, astFile *ast.File) {
 	handleName := func(name string) string {
 		if _, ok := structList[name]; ok {
 			return p.curPack + "." + name
+		}
+		if len(name) > 0 && name[0] == '*' {
+			if _, ok := structList[name[1:]]; ok {
+				return "*" + p.curPack + "." + name[1:]
+			}
 		}
 		if _, ok := interfaceList[name]; ok {
 			return p.curPack + "." + name

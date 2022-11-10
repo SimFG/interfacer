@@ -61,7 +61,7 @@ git clone github.com/SimFG/interfacer
 ```
 2. run
 ```shell
-go run interfacer.go
+go run interfacer.go interfacer_handle.go
 ```
 
 ## Roadmap
@@ -73,7 +73,7 @@ go run interfacer.go
   - fuzzy matching
 - Debug mode, print the detail info ✅
 - It will be ignored if the new method has existed ✅
-- Scan one third part file and then get all the implements of the interface, like the protobuf interface
+- Scan one third part file and then get all the implements of the interface, like the protobuf interface ✅
 - Check the input params
 - Customer the configuration yaml file path ✅
 - Write the method content easily by the way similar to writing interface
@@ -81,6 +81,7 @@ go run interfacer.go
 - Customer the insert position
 - Support to generate more methods
 - More readable codes
+- Handle the un-import interface or struct param when adding the new method 
 - Handle some special struct or interface
 - More useful tool of reading and writing `go` file
 - Ast example project

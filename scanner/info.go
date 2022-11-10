@@ -21,6 +21,7 @@ import (
 	"github.com/SimFG/interfacer/tool"
 	"github.com/samber/lo"
 	"go.uber.org/zap"
+	"golang.org/x/exp/slices"
 	"sort"
 	"strings"
 )
@@ -46,27 +47,6 @@ type StructInfo struct {
 	methods        map[string]*MethodInfo
 	innerStruct    []*StructInfo
 	innerInterface []*InterfaceInfo
-}
-
-func (s *StructInfo) CheckMethod(m *MethodInfo) bool {
-	sm, ok := s.methods[m.name]
-	if ok && sm.Equal(m) {
-		return true
-	}
-
-	for _, inner := range s.innerStruct {
-		if inner.CheckMethod(m) {
-			return true
-		}
-	}
-
-	for _, inner := range s.innerInterface {
-		if inner.CheckMethod(m) {
-			return true
-		}
-	}
-
-	return false
 }
 
 func (s *StructInfo) Tokens() {
@@ -97,6 +77,8 @@ func (s *StructInfo) HasImplementInterface(i *InterfaceInfo) bool {
 			y++
 		} else if s.tokens[x] < i.tokens[y] {
 			x++
+		} else if slices.Contains(i.excludeTokens, i.tokens[y]) {
+			y++
 		} else {
 			return false
 		}
@@ -137,22 +119,7 @@ type InterfaceInfo struct {
 	innerInterface []*InterfaceInfo
 	methods        []*MethodInfo
 	structs        []*StructInfo // implement the interface
-}
-
-func (i *InterfaceInfo) CheckMethod(m *MethodInfo) bool {
-	for _, mi := range i.methods {
-		if mi.Equal(m) {
-			return true
-		}
-	}
-
-	for _, inner := range i.innerInterface {
-		if inner.CheckMethod(m) {
-			return true
-		}
-	}
-
-	return false
+	excludeTokens  []string
 }
 
 func (i *InterfaceInfo) GetImplements() []*StructInfo {
@@ -173,6 +140,30 @@ func (i *InterfaceInfo) innerToken() []string {
 		tokens = append(tokens, item.innerToken()...)
 	})
 	return tokens
+}
+
+func (i *InterfaceInfo) ExcludeTokens(methods []string) {
+	lo.ForEach[string](methods, func(item string, index int) {
+		if token := i.innerExcludeToken(item); token != "" {
+			i.excludeTokens = append(i.excludeTokens, token)
+		}
+	})
+}
+
+func (i *InterfaceInfo) innerExcludeToken(method string) string {
+	var token string
+	for _, item := range i.methods {
+		if item.name == method {
+			token = item.token()
+			return token
+		}
+	}
+	for _, item := range i.innerInterface {
+		if token = item.innerExcludeToken(method); token != "" {
+			return token
+		}
+	}
+	return ""
 }
 
 func (i *InterfaceInfo) Print() {

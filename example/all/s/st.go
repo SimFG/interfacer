@@ -22,3 +22,7 @@ type Node struct {
 func (n *Node) Foo(i int) {
 
 }
+
+func (n *Node) Info() {
+
+}
