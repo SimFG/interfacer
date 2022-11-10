@@ -64,19 +64,22 @@ git clone github.com/SimFG/interfacer
 go run interfacer.go
 ```
 
-## TODO
+## Roadmap
 - Dealing with generated code out of order of comments
-  - for interface (done)
+  - for interface (**done**)
   - for struct method
-- Handle some special struct or interface
-- Check the input params
 - Exclude dirs or files
-  - accurate (done)
+  - accurate (**done**)
   - fuzzy matching
-- More readable codes
-- Debug mode, print the detail info (done)
-- More useful tool of reading and writing `go` file
-- Customer the insert position
+- Debug mode, print the detail info (**done**)
+- It will be ignored if the new method has existed (**done**)
+- Scan one third part file and then get all the implements of the interface, like the protobuf interface
+- Check the input params
+- Customer the `interfacer.yaml`
+- Write the method content easily by the way similar to writing interface
 - Idea plugin
-- Scan one third part file and then get all the implements of the interface, like the protobuf interface 
-- It will be ignored if the new method has existed (done)
+- Customer the insert position
+- More readable codes
+- Handle some special struct or interface
+- More useful tool of reading and writing `go` file
+- Ast example project

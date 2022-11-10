@@ -47,6 +47,7 @@ type Scanner struct {
 	interfaces      map[string]*InterfaceInfo
 	packageStr      string
 	rootPath        string
+	onlyInterface   bool
 	postParserFuncs []PostParser
 }
 
@@ -58,6 +59,10 @@ func New(p string, r string) *Scanner {
 		packageStr: p,
 		rootPath:   r,
 	}
+}
+
+func (s *Scanner) OnlyInterface(b bool) {
+	s.onlyInterface = b
 }
 
 func (s *Scanner) Start(dir string, excludeDir []string) {

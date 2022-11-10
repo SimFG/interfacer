@@ -19,7 +19,6 @@ package i
 type Component interface {
 	// Foo comment
 	Foo(i int)
-	Hello(f int64) (int, error)
 }
 
 // PrintComponent print
