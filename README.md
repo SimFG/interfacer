@@ -59,7 +59,7 @@ Some problems may be encountered during use, as the tool is currently under deve
 - Debug mode, print the detail info ✅
 - It will be ignored if the new method has existed ✅
 - Scan many third modules' files and then get all the implements of the interface, like the protobuf interface ✅
-- Check the input params
+- Check the input params ✅
 - Customer the configuration yaml file path ✅
 - Update the Chinese README file ✅
 - Beautify the README file ✅

@@ -114,8 +114,28 @@ func readYaml() {
 	}
 }
 
+func check() {
+	var checker tool.ConfigChecker
+	checker.CheckProjectDir(projectDir)
+	checker.CheckModuleName(projectModule)
+	checker.CheckWritePaths(config.WritePaths)
+	checker.CheckInterface(interfaceFullName, newMethod, returnDefaultValues)
+	lo.ForEach[SubModule](config.SubModules, func(item SubModule, index int) {
+		checker.CheckProjectDir(item.ProjectDir)
+		checker.CheckModuleName(item.ProjectModule)
+		checker.CheckInterface(item.InterfaceFullName, item.Method, item.ReturnDefaultValues)
+	})
+}
+
 func implement(cmd *cobra.Command, args []string) {
 	readYaml()
+
+	if projectDir == "" || projectModule == "" {
+		tool.HandleErrorWithMsg(errors.New("invalid param"), "The params should be filled")
+	}
+
+	check()
+
 	lo.ForEach[string](config.WritePaths, func(item string, index int) {
 		pathInfo := strings.Split(item, ",")
 		writePaths[pathInfo[0]] = pathInfo[1]
@@ -123,10 +143,6 @@ func implement(cmd *cobra.Command, args []string) {
 	config.ExcludeDirs = append(config.ExcludeDirs, []string{".idea", ".git", "vendor", ".github"}...)
 	tool.EnableRecord(config.EnableRecord)
 	tool.EnableDebug(config.EnableDebug)
-
-	if projectDir == "" || projectModule == "" || interfaceFullName == "" || newMethod == "" {
-		tool.HandleErrorWithMsg(errors.New("invalid param"), "The params should be filled")
-	}
 
 	s := scanner.New(projectModule, projectDir)
 	tool.Timer("Interfacer", func() {
