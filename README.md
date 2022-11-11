@@ -8,6 +8,7 @@ Implement new methods in the interface everywhere
 ![effect](pic/golang.gif)
 
 ## 🎉 Effect
+
 ![effect](pic/effect.gif)
 
 ## 🤔️ Why this tool
@@ -57,13 +58,15 @@ Some problems may be encountered during use, as the tool is currently under deve
   - fuzzy matching
 - Debug mode, print the detail info ✅
 - It will be ignored if the new method has existed ✅
-- Scan one third part file and then get all the implements of the interface, like the protobuf interface ✅
+- Scan many third modules' files and then get all the implements of the interface, like the protobuf interface ✅
 - Check the input params
 - Customer the configuration yaml file path ✅
-- Update the Chinese README file
+- Update the Chinese README file ✅
 - Beautify the README file ✅
 - Dynamic display of program running time
 - Show scan progress
+- Configure whether to add the new method if the inner struct or interface has contained the new method 
+- Individually add a method for different structs that implements different interfaces of the third modules
 - Write the method content easily by the way similar to writing interface
 - Idea plugin
 - Customer the insert position
@@ -73,4 +76,4 @@ Some problems may be encountered during use, as the tool is currently under deve
 - Handle the un-import interface or struct param when adding the new method 
 - Handle some special struct or interface
 - More useful tool of reading and writing `go` file
-- Ast example project
+- Ast example doc
