@@ -50,6 +50,7 @@ func NewPackageParser(s *Scanner, curPack string, curDir string, astPack *ast.Pa
 func (p *PackageParser) Parse() {
 	for name, file := range p.astPack.Files {
 		p.ParseFile(name, file)
+		p.scanner.currentNum++
 	}
 
 	p.handInner()

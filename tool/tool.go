@@ -19,7 +19,9 @@ package tool
 import (
 	"fmt"
 	"go.uber.org/zap"
+	"io/fs"
 	"os"
+	"path/filepath"
 	"reflect"
 	"strings"
 	"time"
@@ -49,6 +51,17 @@ func Timer(name string, fn func()) {
 // PathJoin path.Join()
 func PathJoin(paths ...string) string {
 	return strings.Join(paths, FileSep)
+}
+
+func FileNumInDir(dir string) int {
+	k := 0
+	filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
+		if !d.IsDir() {
+			k++
+		}
+		return nil
+	})
+	return k
 }
 
 // FileWalk fn, if the return value is false, it won't continue to walk

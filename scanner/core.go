@@ -17,6 +17,8 @@
 package scanner
 
 import (
+	"fmt"
+	"github.com/SimFG/interfacer/progress"
 	"github.com/SimFG/interfacer/tool"
 	"github.com/samber/lo"
 	"go.uber.org/zap"
@@ -25,6 +27,7 @@ import (
 	"os"
 	"strings"
 	"sync"
+	"time"
 )
 
 type PostParser interface {
@@ -49,6 +52,12 @@ type Scanner struct {
 	rootPath        string
 	enableImplement bool
 	postParserFuncs []PostParser
+
+	fileSum    int
+	currentNum int
+	startTime  time.Time
+	done       chan struct{}
+	lg         *progress.LineGroup
 }
 
 func New(p string, r string) *Scanner {
@@ -59,6 +68,8 @@ func New(p string, r string) *Scanner {
 		packageStr:      p,
 		rootPath:        r,
 		enableImplement: true,
+		lg:              &progress.LineGroup{},
+		done:            make(chan struct{}),
 	}
 }
 
@@ -84,17 +95,48 @@ func (s *Scanner) SubModule(sub *Scanner, fullInterfaceName string, method strin
 	s.interfaces[fullInterfaceName] = interfaceInfo
 }
 
+func (s *Scanner) GetLineFunc(current int) func(i int, l *progress.Line) {
+	return func(i int, l *progress.Line) {
+		if i == 0 {
+			l.Print("cost: %dms", time.Now().Sub(s.startTime).Milliseconds())
+		} else if i == 1 {
+			l.Print("progress: %d/%d", current, s.fileSum)
+		}
+	}
+}
+
 func (s *Scanner) Start(dir string, excludeDir []string) {
 	tool.Info("Scanner Start", zap.String("dir", dir), zap.Strings("exclude_dir", excludeDir))
 	excludeDirMap := tool.ToMap(excludeDir)
+
+	fmt.Println("start to scan the dir:", dir)
+	s.lg.SetLineNum(2)
+	defer func() {
+		s.lg.End(s.GetLineFunc(s.fileSum))
+	}()
+	s.fileSum = tool.FileNumInDir(dir)
+	s.startTime = time.Now()
+	go func() {
+		for {
+			select {
+			case <-s.done:
+				return
+			case <-time.After(500 * time.Millisecond):
+				s.lg.Print(s.GetLineFunc(s.currentNum))
+			}
+		}
+	}()
+
 	tool.FileWalk(dir, true, func(absPath string, fileInfo os.FileInfo) bool {
 		tool.Info("File Walk inner", zap.String("abs_path", absPath))
 		if _, ok := excludeDirMap[fileInfo.Name()]; ok {
+			s.currentNum += tool.FileNumInDir(absPath)
 			return false
 		}
 		s.parseDir(absPath)
 		return true
 	})
+	close(s.done)
 
 	lo.ForEach[PostParser](s.postParserFuncs, func(item PostParser, _ int) {
 		item.Post(s.structs, s.interfaces)

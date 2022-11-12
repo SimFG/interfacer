@@ -63,8 +63,8 @@ Some problems may be encountered during use, as the tool is currently under deve
 - Customer the configuration yaml file path ✅
 - Update the Chinese README file ✅
 - Beautify the README file ✅
-- Dynamic display of program running time
-- Show scan progress
+- Dynamic display of program running time ✅
+- Show scan progress ✅
 - Configure whether to add the new method if the inner struct or interface has contained the new method 
 - Individually add a method for different structs that implements different interfaces of the third modules
 - Write the method content easily by the way similar to writing interface
