@@ -1,5 +1,5 @@
 # Interfacer
-[中文文档](doc/user/README_CN.md)
+English | [中文文档](doc/user/README_CN.md)
 
 Implement new methods in the interface everywhere
 
@@ -65,9 +65,12 @@ Some problems may be encountered during use, as the tool is currently under deve
 - Beautify the README file ✅
 - Dynamic display of program running time ✅
 - Show scan progress ✅
+- Configure whether to add a new line when generating the new method for the interface
+- Handle the no name params in the method, like `foo(bool)`
 - Configure whether to add the new method if the inner struct or interface has contained the new method 
 - Individually add a method for different structs that implements different interfaces of the third modules
 - Write the method content easily by the way similar to writing interface
+- Handle the more params that are the same type, like `foo(a, b bool)`
 - Idea plugin
 - Customer the insert position
 - Generate more complex default method implement by the template

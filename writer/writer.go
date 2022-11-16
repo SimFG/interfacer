@@ -339,7 +339,7 @@ func FileInsertContent(fileName string, line int, content string) {
 		_, _ = writer.WriteString(l)
 		_ = writer.Flush()
 	}
-	_, _ = tempFile.WriteString(content + "\n")
+	_, _ = tempFile.WriteString("\n" + content + "\n")
 	for {
 		l, err := reader.ReadString('\n')
 		if err == io.EOF {
