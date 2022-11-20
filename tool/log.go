@@ -25,6 +25,7 @@ import (
 var (
 	logger   *zap.Logger
 	record   *zap.Logger
+	debug    *zap.Logger
 	isRecord bool
 	isDebug  bool
 )
@@ -38,6 +39,11 @@ func init() {
 	)
 
 	record = zap.New(zapcore.NewCore(getEmptyEncoder(), getLoggerWriter("record.log"), zapcore.InfoLevel),
+		zap.AddCaller(),
+		zap.AddCallerSkip(1),
+	)
+
+	record = zap.New(zapcore.NewCore(getEmptyEncoder(), getLoggerWriter("debug.log"), zapcore.InfoLevel),
 		zap.AddCaller(),
 		zap.AddCallerSkip(1),
 	)
@@ -93,4 +99,8 @@ func Warn(msg string, fields ...zap.Field) {
 
 func Panic(msg string, fields ...zap.Field) {
 	logger.Panic(msg, fields...)
+}
+
+func Debug(msg string, fields ...zap.Field) {
+	debug.Debug(msg, fields...)
 }

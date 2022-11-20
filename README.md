@@ -70,6 +70,7 @@ Some problems may be encountered during use, as the tool is currently under deve
 - Configure whether to add the new method if the inner struct or interface has contained the new method 
 - Individually add a method for different structs that implements different interfaces of the third modules
 - Write the method content easily by the way similar to writing interface
+- Contributing doc
 - Handle the more params that are the same type, like `foo(a, b bool)`
 - Idea plugin
 - Customer the insert position
