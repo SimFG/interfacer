@@ -43,7 +43,7 @@ func init() {
 		zap.AddCallerSkip(1),
 	)
 
-	record = zap.New(zapcore.NewCore(getEmptyEncoder(), getLoggerWriter("debug.log"), zapcore.InfoLevel),
+	debug = zap.New(zapcore.NewCore(getEmptyEncoder(), getLoggerWriter("debug.log"), zapcore.DebugLevel),
 		zap.AddCaller(),
 		zap.AddCallerSkip(1),
 	)
@@ -67,6 +67,7 @@ func getEncoder() zapcore.Encoder {
 
 func getEmptyEncoder() zapcore.Encoder {
 	config := zapcore.EncoderConfig{}
+	config.MessageKey = "msg"
 	return zapcore.NewConsoleEncoder(config)
 }
 

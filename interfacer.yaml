@@ -5,6 +5,8 @@ new_method: "Hello(f int64) (int, error)"
 return_default_values: "0,nil"
 write_paths:
   - "github.com/SimFG/interfacer/example/proxy/all/s.Node,/Users/derek/xxx/interfacer/example/all/s/st.go"
+ignore_structs:
+  - "github.com/SimFG/interfacer/example/all/s.NodeIG"
 enable_debug: true
 enable_record: true
 

@@ -66,6 +66,7 @@ var (
 	newMethod           string
 	returnDefaultValues string
 	writePaths          = make(map[string]string)
+	ignoreStructs       []string
 	config              = &Config{}
 )
 
@@ -141,6 +142,7 @@ func implement(cmd *cobra.Command, args []string) {
 		pathInfo := strings.Split(item, ",")
 		writePaths[pathInfo[0]] = pathInfo[1]
 	})
+	ignoreStructs = config.IgnoreStructs
 	config.ExcludeDirs = append(config.ExcludeDirs, []string{".idea", ".git", "vendor", ".github"}...)
 	tool.EnableRecord(config.EnableRecord)
 	tool.EnableDebug(config.EnableDebug)

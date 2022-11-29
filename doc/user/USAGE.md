@@ -43,6 +43,7 @@ There are two ways to set parameters, including the `yaml` file and the command 
 - method: declaration of the newly added method
 - returns: the default return values of new method
 - exclude dirs: these dirs will be ignored
+- ignore_structs: ignore structs when generating the method
 - enable_debug: set true if you find a problem while using this tool, and the processing speed will slow because it needs to write a lot of logs to the files.
 - enable_record: set true if you want to get the relations between all structs and interfaces.
 - sub_modules: the third modules' configuration. It's suitable to add a new method when the interface in the third module add a new method, like the rpc service in the protobuf.

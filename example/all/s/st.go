@@ -26,3 +26,11 @@ func (n *Node) Foo(i int) {
 func (n *Node) Info() {
 
 }
+
+type NodeIG struct {
+	Node
+}
+
+func (n *NodeIG) Foo(i int) {
+
+}

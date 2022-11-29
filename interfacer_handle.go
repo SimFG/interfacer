@@ -82,6 +82,9 @@ func WriteMethod(s *scanner.Scanner, interfaceFullName string, newMethod string,
 		writer.WriteFileForLine(interfaceFileName, []writer.Writer{writer.GetInterfaceWrite2(interfaceFileName, interfaceName, "\t"+newMethod)})
 	}
 	lo.ForEach[*scanner.StructInfo](interfaceInfo.GetImplements(), func(item *scanner.StructInfo, index int) {
+		if lo.Contains(ignoreStructs, item.Name()) {
+			return
+		}
 		writePath := item.FilePaths()[0]
 		if p, ok := writePaths[item.Name()]; ok {
 			writePath = p
