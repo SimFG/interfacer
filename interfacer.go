@@ -46,6 +46,7 @@ type Config struct {
 	InterfaceFullName   string      `yaml:"interface_full_name"`
 	NewMethod           string      `yaml:"new_method"`
 	ReturnDefaultValues string      `yaml:"return_default_values"`
+	IgnoreStructs       []string    `yaml:"ignore_structs,flow"`
 	EnableRecord        bool        `yaml:"enable_record"`
 	EnableDebug         bool        `yaml:"enable_debug"`
 	SubModules          []SubModule `yaml:"sub_modules,flow"`

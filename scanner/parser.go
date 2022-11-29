@@ -114,37 +114,13 @@ func (p *PackageParser) handInner() {
 	}
 }
 
-// GetValueFromType Get value from the `*ast.Ident`/`*ast.SelectorExpr`/`*ast.StarExpr`
-// TODO handle the map / slice / func
-func (p *PackageParser) GetValueFromType(e ast.Expr) string {
-	tool.Info("GetValueFromType", zap.String("type", tool.TypeString(e)))
-	switch e.(type) {
-	case *ast.SelectorExpr:
-		selectExpr := e.(*ast.SelectorExpr)
-		// if the inner interface is "http.File"
-		// selectExpr.Sel.Name -> File
-		// selectExpr.X.(*ast.Ident).Name -> http
-		return selectExpr.X.(*ast.Ident).Name + "." + selectExpr.Sel.Name
-	case *ast.Ident:
-		return e.(*ast.Ident).Name
-	case *ast.InterfaceType:
-		return "interface{}"
-	case *ast.StarExpr:
-		return "*" + p.GetValueFromType(e.(*ast.StarExpr).X)
-	default:
-		tool.Info("WARN GetValueFromType")
-		return ""
-	}
-
-}
-
 func (p *PackageParser) HandleFieldListForInterface(fields *ast.FieldList, f func(value string, namesLen int)) {
 	if fields == nil {
 		return
 	}
 	for _, param := range fields.List {
 		tool.Info("HandleFieldListForInterface param", zap.Any("names", param.Names))
-		value := p.GetValueFromType(param.Type)
+		value := tool.GetValueFromType(param.Type)
 		times := len(param.Names)
 		if times == 0 {
 			times = 1
@@ -201,7 +177,7 @@ func (p *PackageParser) ParseFile(fileFullPath string, astFile *ast.File) {
 				structType := typeSpec.Type.(*ast.StructType)
 				for _, field := range structType.Fields.List {
 					if len(field.Names) == 0 {
-						value := p.GetValueFromType(field.Type)
+						value := tool.GetValueFromType(field.Type)
 						innerStructs[typeName] = append(innerStructs[typeName], value)
 					}
 				}
@@ -222,7 +198,7 @@ func (p *PackageParser) ParseFile(fileFullPath string, astFile *ast.File) {
 							info.methods = append(info.methods, methodInfo)
 						default:
 							// get inner interface
-							value := p.GetValueFromType(filed.Type)
+							value := tool.GetValueFromType(filed.Type)
 							if value == "" {
 								tool.Info("default field type spec type", zap.String("type", tool.TypeString(filed.Type)))
 							} else {
@@ -240,7 +216,7 @@ func (p *PackageParser) ParseFile(fileFullPath string, astFile *ast.File) {
 			tool.IfF(funcDecl.Recv != nil, func() {
 				funcName := funcDecl.Name.Name
 				methodInfo := &MethodInfo{name: funcName}
-				structName := p.GetValueFromType(funcDecl.Recv.List[0].Type)
+				structName := tool.GetValueFromType(funcDecl.Recv.List[0].Type)
 				if len(structName) == 0 {
 					//tool.PrintDetail("FuncDecl-receiver", funcDecl.Recv.List[0].Type)
 					// log.Println(funcName, "-file", fileFullPath)

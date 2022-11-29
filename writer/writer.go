@@ -145,7 +145,7 @@ func GetFuncWriter(receiverName string, receiverType string, funcName string, pa
 			zap.Strings("param_types", paramTypes), zap.Strings("return_types", returnTypes),
 			zap.Strings("return_default_values", returnDefaultValues))
 
-		if ExistedMethodForStruct(fileNode.Decls, funcName) {
+		if ExistedMethodForStruct(fileNode.Decls, funcName, receiverType) {
 			return
 		}
 
@@ -199,7 +199,7 @@ func GetFuncWriter(receiverName string, receiverType string, funcName string, pa
 	})
 }
 
-func ExistedMethodForStruct(decls []ast.Decl, method string) bool {
+func ExistedMethodForStruct(decls []ast.Decl, method string, receiverType string) bool {
 	hasExist := false
 	var (
 		funcDecl *ast.FuncDecl
@@ -210,9 +210,14 @@ func ExistedMethodForStruct(decls []ast.Decl, method string) bool {
 		if funcDecl, ok = item.(*ast.FuncDecl); !ok {
 			return
 		}
+
 		if funcDecl.Name != nil && funcDecl.Name.Name == method {
-			tool.Warn("the method has existed in this struct")
-			hasExist = true
+			if funcDecl.Recv != nil && len(funcDecl.Recv.List) != 0 {
+				funType := funcDecl.Recv.List[0].Type
+				if tool.GetValueFromType(funType) == receiverType {
+					hasExist = true
+				}
+			}
 		}
 	})
 	return hasExist

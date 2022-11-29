@@ -65,6 +65,7 @@ Some problems may be encountered during use, as the tool is currently under deve
 - Beautify the README file ✅
 - Dynamic display of program running time ✅
 - Show scan progress ✅
+- Using the function name and receiver type to check whether the method has existed  ✅
 - Configure whether to add a new line when generating the new method for the interface
 - Handle the no name params in the method, like `foo(bool)`
 - Configure whether to add the new method if the inner struct or interface has contained the new method 
