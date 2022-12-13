@@ -67,6 +67,7 @@ Some problems may be encountered during use, as the tool is currently under deve
 - Show scan progress ✅
 - Using the function name and receiver type to check whether the method has existed  ✅
 - Configure whether to add a new line when generating the new method for the interface ✅
+- Support the use of `go generate` annotations in the program
 - Handle the no name params in the method, like `foo(bool)`
 - Configure whether to add the new method if the inner struct or interface has contained the new method 
 - Individually add a method for different structs that implements different interfaces of the third modules
